@@ -1,0 +1,26 @@
+{
+  "name": "shinnymarket",
+  "version": "0.0.1",
+  "description": "shinny market",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iguzhi/shinnymarket.git"
+  },
+  "keywords": [
+    "market"
+  ],
+  "author": "iguzhi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iguzhi/shinnymarket/issues"
+  },
+  "homepage": "https://github.com/iguzhi/shinnymarket#readme",
+  "dependencies": {
+    "eventemitter3": "^4.0.0",
+    "ws": "^7.2.3"
+  }
+}
