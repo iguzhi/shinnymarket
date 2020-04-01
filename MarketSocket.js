@@ -74,7 +74,7 @@ class MarketSocket extends EventEmitter {
           });
         }
         else {
-          this.reconnectTask = setTimeout(function () {
+          this.reconnectTask = setTimeout(() => {
             if (this.ws.readyState === WebSocket.CLOSED) {
               // 每次重连的时候设置 _this.reconnectUrlIndex
               this._init(true)
