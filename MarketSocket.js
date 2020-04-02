@@ -186,10 +186,18 @@ class MarketSocket extends EventEmitter {
   sendKlines({ symbol, duration = '1m', startDay, dayCount, barCount }) {
     const params = {};
     if (startDay && dayCount) {
+      if (dayCount > 10 || dayCount < 1) {
+        console.error('Error: dayCount合法值为[1, 10]的整数');
+        return;
+      }
       params.trading_day_start = startDay * 3600 * 24 * 1e9;
       params.trading_day_count = dayCount * 3600 * 24 * 1e9;
     }
     else if (barCount) {
+      if (barCount > 10000 || barCount < 1) {
+        console.error('Error: barCount合法值为[1, 10000]的整数');
+        return;
+      }
       params.view_width = barCount;
     }
     this.send({
