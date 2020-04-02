@@ -175,13 +175,29 @@ class MarketSocket extends EventEmitter {
     }
   }
 
-  sendKlines({ symbol, duration = '1m', count }) {
+  /**
+   * 使用startDay和dayCount两个参数结合查询, 一次最多只能查10天的数据
+   * 使用barCount查询, 一次最多查询10000根K线数据
+   * startDay、dayCount和barCount 二者互斥, 如果都存在, 优先使用startDay、dayCount查询
+   * @param {Integer} startDay 从哪一天开始查, 负数-n表示从当前时间往前查n天K线数据
+   * @param {Integer} dayCount 查多少天的K线数据, 最大值是10, 最小值是1
+   * @param {Integer} barCount 查多少根K线数据
+   */
+  sendKlines({ symbol, duration = '1m', startDay, dayCount, barCount }) {
+    const params = {};
+    if (startDay && dayCount) {
+      params.trading_day_start = startDay * 3600 * 24 * 1e9;
+      params.trading_day_count = dayCount * 3600 * 24 * 1e9;
+    }
+    else if (barCount) {
+      params.view_width = barCount;
+    }
     this.send({
       aid: 'set_chart',
       chart_id: 'chart_kline',
       ins_list: symbol,
       duration: this.getDurationValue(duration),
-      view_width: count
+      ...params
     });
   }
 
