@@ -1,6 +1,6 @@
 {
   "name": "shinnymarket",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "shinny market",
   "main": "index.js",
   "scripts": {

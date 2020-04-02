@@ -29,9 +29,9 @@ socket.on('error', data => {
 socket.sendKlines({
   symbol: 'SHFE.rb2010',
   duration: '1m',
-  // startDay: -120,
-  // dayCount: 1// 3600 * 24 * 1e9
-  barCount: 100
+  startDay: -1,
+  dayCount: 1// 3600 * 24 * 1e9
+  // barCount: 100
 });
 // socket.sendQuotes({
 //   symbol: 'SHFE.ag2006'
