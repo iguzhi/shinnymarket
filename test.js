@@ -3,9 +3,10 @@ const { MarketSocket } = require('./index');
 const socket = new MarketSocket();
 
 socket.on('message', data => {
-  console.log('##aaa: ' + JSON.stringify(
-    socket.getKlines({ data, symbol: 'SHFE.rb2010', duration: '1m' })
-  ))
+  console.log(JSON.stringify(data))
+  // console.log('##aaa: ' + JSON.stringify(
+  //   socket.getKlines({ data, symbol: 'SHFE.rb2010', duration: '1m' })
+  // ))
   // console.log(JSON.stringify(socket.getByPath(['quotes', 'SHFE.au2006'], data.data)));
   console.log('\n\n');
 });
@@ -26,12 +27,18 @@ socket.on('error', data => {
   console.log(data);
 });
 
-socket.sendKlines({
+/*socket.requestKlines({
   symbol: 'SHFE.rb2010',
   duration: '1m',
-  startDay: -1,
-  dayCount: 1// 3600 * 24 * 1e9
-  // barCount: 100
+  // startDay: -1,
+  // dayCount: 1// 3600 * 24 * 1e9
+  count: 100
+});*/
+socket.requestTicks({
+  symbol: 'SHFE.rb2010',
+  // startDay: -1,
+  // dayCount: 1// 3600 * 24 * 1e9
+  count: 100
 });
 // socket.sendQuotes({
 //   symbol: 'SHFE.ag2006'
