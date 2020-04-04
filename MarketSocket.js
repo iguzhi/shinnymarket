@@ -163,49 +163,21 @@ class MarketSocket extends EventEmitter {
     }
   }
 
-  getTicks({ data, symbol, duration, toArray = true }) {
+  getTicks({ data, symbol, toArray = true }) {
     if (data.aid === 'rtn_data') {
       let list = data.data;
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
         if (Object.keys(d).length === 1 && d.ticks) {
           for (let symbol in d.ticks) {
-            let symbolTickData = d.ticks[symbol];
-            for (let durationValue in symbolTickData) {
-              let durationTickData = symbolTickData[durationValue].data;
-              for (let id in durationTickData) {
-                durationTickData[id].id = Number(id);
-                durationTickData[id].datetime /= 1e6; // 转换成毫秒
-              }
-              symbolTickData[this.getDurationLabel(Number(durationValue))] = symbolTickData[durationValue];
-              delete symbolTickData[durationValue];
+            let symbolTickData = d.ticks[symbol].data;
+            for (let id in symbolTickData) {
+              symbolTickData[id].id = Number(id);
+              symbolTickData[id].datetime /= 1e6; // 转换成毫秒
             }
           }
-          if (symbol) {
-            let ticks = d.ticks[symbol];
-            if (duration) {
-              if (typeof duration === Number) {
-                duration = this.getDurationLabel(duration);
-              }
-              let ticksData = ticks[duration];
-              if (!ticksData) {
-                return null;
-              }
-              ticksData = ticksData.data;
-              if (toArray) {
-                return Object.values(ticksData).sort((a, b) => a.id - b.id);
-              }
-              else {
-                return ticksData;
-              }
-            }
-            else {
-              return ticks;
-            }
-          }
-          else {
-            return d.ticks;
-          }
+
+          return symbol ? d.ticks[symbol] : d.ticks;
         }
       }
     }
@@ -231,36 +203,6 @@ class MarketSocket extends EventEmitter {
    * @param {Integer} dayCount 查多少天的K线数据, 最大值是10, 最小值是1
    * @param {Integer} barCount 查多少根K线数据
    */
-  sendKlines({ symbol, duration = '1m', startDay, dayCount, barCount }) {
-    const params = {};
-    if (typeof startDay !== 'undefined' && typeof dayCount !== 'undefined') {
-      if (startDay >= 0) {
-        console.error('Error: startDay合法值必须为负整数');
-        return;
-      }
-      if (dayCount > 10 || dayCount < 1) {
-        console.error('Error: dayCount合法值必须为[1, 10]的整数');
-        return;
-      }
-      params.trading_day_start = startDay * 3600 * 24 * 1e9;
-      params.trading_day_count = dayCount * 3600 * 24 * 1e9;
-    }
-    else if (typeof barCount !== 'undefined') {
-      if (barCount > 10000 || barCount < 1) {
-        console.error('Error: barCount合法值必须为[1, 10000]的整数');
-        return;
-      }
-      params.view_width = barCount;
-    }
-    this.send({
-      aid: 'set_chart',
-      chart_id: 'chart_kline',
-      ins_list: symbol,
-      duration: this.getDurationValue(duration),
-      ...params
-    });
-  }
-
   requestKlines({ symbol, duration = '1m', startDay, dayCount, count }) {
     const params = {};
     if (typeof startDay !== 'undefined' && typeof dayCount !== 'undefined') {
@@ -321,7 +263,7 @@ class MarketSocket extends EventEmitter {
     });
   }
 
-  sendQuotes({ symbol }) {
+  requestQuotes({ symbol }) {
     this.send({
       aid: 'subscribe_quote',
       ins_list: symbol
