@@ -1,13 +1,7 @@
 const EventEmitter = require('eventemitter3');
 const WebSocket = require('ws');
-
+const { getDurationLabel, getDurationValue, randomStr } = require('./util');
 const MARKET_URL = 'wss://openmd.shinnytech.com/t/md/front/mobile';
-
-const DURATION_UNIT = {
-  m: 60 * 1e9, // 1分钟
-  h: 60 * 60 * 1e9, // 1小时
-  d: 24 * 60 * 60 * 1e9, // 1天
-};
 
 class MarketSocket extends EventEmitter {
   constructor(url = MARKET_URL, options = {}) {
@@ -129,7 +123,7 @@ class MarketSocket extends EventEmitter {
                 durationKlineData[id].id = Number(id);
                 durationKlineData[id].datetime /= 1e6; // 转换成毫秒
               }
-              symbolKlineData[this.getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
+              symbolKlineData[getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
               delete symbolKlineData[durationValue];
             }
           }
@@ -137,7 +131,7 @@ class MarketSocket extends EventEmitter {
             let klines = d.klines[symbol];
             if (duration) {
               if (typeof duration === Number) {
-                duration = this.getDurationLabel(duration);
+                duration = getDurationLabel(duration);
               }
               let klinesData = klines[duration];
               if (!klinesData) {
@@ -206,16 +200,19 @@ class MarketSocket extends EventEmitter {
   requestKlines({ symbol, duration = '1m', startDay, dayCount, count }) {
     const params = {};
     if (typeof startDay !== 'undefined' && typeof dayCount !== 'undefined') {
-      if (startDay >= 0) {
-        console.error('Error: startDay合法值必须为负整数');
-        return;
-      }
-      if (dayCount > 10 || dayCount < 1) {
-        console.error('Error: dayCount合法值必须为[1, 10]的整数');
-        return;
-      }
-      params.trading_day_start = startDay * 3600 * 24 * 1e9;
-      params.trading_day_count = dayCount * 3600 * 24 * 1e9;
+      // if (startDay >= 0) {
+      //   console.error('Error: startDay合法值必须为负整数');
+      //   return;
+      // }
+      // if (dayCount > 10 || dayCount < 1) {
+      //   console.error('Error: dayCount合法值必须为[1, 10]的整数');
+      //   return;
+      // }
+      // params.trading_day_start = startDay * 3600 * 24 * 1e9;
+      // params.trading_day_count = dayCount * 3600 * 24 * 1e9;
+      params.trading_day_start = new Date(2020, 1, 1).getTime() * 1e6;
+      params.trading_day_count = 1 * 3600 * 24 * 1e9;
+      // params.trading_day_end = new Date(2020, 3, 28).getTime() * 1e6;
     }
     else if (typeof count !== 'undefined') {
       if (count > 10000 || count < 1) {
@@ -226,11 +223,22 @@ class MarketSocket extends EventEmitter {
     }
     this.send({
       aid: 'set_chart',
-      chart_id: 'chart_kline',
-      ins_list: symbol,
-      duration: this.getDurationValue(duration),
-      ...params
+      chart_id: 'kline_chart_' + randomStr(),
+      ins_list: 'SHFE.rb2010,SHFE.ru2010,SHFE.cu2010',
+      duration: getDurationValue(duration),
+      // left_id: 0,
+      // right_id: 0,
+      // more_data: true,
+      // ...params
+      view_width: 20,
+      focus_datetime: params.trading_day_start,
+      focus_position: 0
     });
+    // ins_list: symbols.join(','),
+    //   duration,
+    //   view_width: 2000,
+    //   focus_datetime: startDatetime,
+    //   focus_position: 0,
   }
 
   requestTicks({ symbol, startDay, dayCount, count }) {
@@ -270,29 +278,6 @@ class MarketSocket extends EventEmitter {
     });
   }
 
-  getDurationValue(duration = '1m') {
-    let d = duration.match(/^(\d+)([mhd])$/);
-    if (d && d[1] && d[2]) {
-      let n = Number(d[1]);
-      let unit = d[2];
-      return n * DURATION_UNIT[unit];
-    }
-  }
-
-  getDurationLabel(duration) {
-    let days = duration / DURATION_UNIT.d;
-    if (days >= 1) {
-      return `${days}d`;
-    }
-
-    let hours = duration / DURATION_UNIT.h;
-    if (hours >= 1) {
-      return `${hours}h`;
-    }
-
-    let minutes = duration / DURATION_UNIT.m;
-    return `${minutes}m`;
-  }
 }
 
 module.exports = MarketSocket;

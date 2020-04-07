@@ -2,8 +2,24 @@ const { MarketSocket } = require('./index');
 
 const socket = new MarketSocket();
 
+let fs = require('fs');
+ 
+let options = {
+  flags: 'a',     // append模式
+  encoding: 'utf8',  // utf8编码
+};
+ 
+let stdout = fs.createWriteStream('./stdout.log', options);
+let stderr = fs.createWriteStream('./stderr.log', options);
+ 
+// 创建logger
+let logger = new console.Console(stdout, stderr);
+ 
+
 socket.on('message', data => {
   console.log(JSON.stringify(data))
+
+  logger.log(JSON.stringify(data))
   // console.log('##aaa: ' + JSON.stringify(
   //   socket.getKlines({ data, symbol: 'SHFE.rb2010', duration: '1m' })
   // ))
@@ -27,19 +43,20 @@ socket.on('error', data => {
   console.log(data);
 });
 
-/*socket.requestKlines({
+socket.requestKlines({
   symbol: 'SHFE.rb2010',
   duration: '1m',
-  // startDay: -1,
-  // dayCount: 1// 3600 * 24 * 1e9
-  count: 100
-});*/
-socket.requestTicks({
-  symbol: 'SHFE.rb2010',
-  // startDay: -1,
-  // dayCount: 1// 3600 * 24 * 1e9
-  count: 100
+  startDay: -1,
+  dayCount: 1// 3600 * 24 * 1e9
+  // count: 100
 });
+
+// socket.requestTicks({
+//   symbol: 'SHFE.rb2010',
+//   // startDay: -1,
+//   // dayCount: 1// 3600 * 24 * 1e9
+//   count: 100
+// });
 // socket.sendQuotes({
 //   symbol: 'SHFE.ag2006'
 // }); // {"aid":"subscribe_quote","ins_list":"CFFEX.IF2004,CFFEX.IH2004,CFFEX.IC2004,CFFEX.TF2006,CFFEX.T2006,CFFEX.TS2006,SHFE.cu2005,SHFE.au2006,SHFE.ag2006"}
