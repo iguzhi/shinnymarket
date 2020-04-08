@@ -223,14 +223,14 @@ class MarketSocket extends EventEmitter {
    * @param {Integer} startDatetime 开始日期
    * @param {Integer} count 一次查多少根K线数据
    */
-  requestKlines({ symbols = [], duration = '1m', startDatetime, leftId, count = 1998 }) {
+  requestKlines({ symbols = [], duration = '1m', startDatetime, count = 1998, chartId }) {
     if (_.isString(symbols)) {
       symbols = symbols.split(',');
     }
 
     const params = {
       aid: 'set_chart',
-      chart_id: 'kline_chart_' + randomStr(),
+      chart_id: chartId || 'kline_chart_' + randomStr(),
       ins_list: symbols.join(','),
       duration: getDurationValue(duration),
       view_width: count,
@@ -238,10 +238,6 @@ class MarketSocket extends EventEmitter {
       focus_position: 0
     };
 
-    if (leftId) {
-      params.left_chart_id = leftId;
-    }
-    console.log('params: ', params)
     this.send(params);
     return params;
   }
