@@ -8,18 +8,18 @@ let options = {
 };
  
 let stdout = fs.createWriteStream('./stdout.log', options);
-let stderr = fs.createWriteStream('./stderr.log', options);
+// let stderr = fs.createWriteStream('./stderr.log', options);
 
 // 创建logger
-let logger = new console.Console(stdout, stderr);
- 
+// let logger = new console.Console(stdout, stderr);
+ let logger = new console.Console(stdout);
 
 const socket = new MarketSocket();
 
 socket.on('message', data => {
-  console.log(JSON.stringify(data))
+  console.log(JSON.stringify(data));
 
-  logger.log(JSON.stringify(data))
+  logger.log(JSON.stringify(data));
   // console.log('##aaa: ' + JSON.stringify(
   //   socket.getKlines({ data, symbol: 'SHFE.rb2010', duration: '1m' })
   // ))
@@ -43,21 +43,19 @@ socket.on('error', data => {
   console.log(data);
 });
 
-socket.requestKlines({
-  symbols: ['SHFE.rb2010'],
-  duration: '1m',
-  startDatetime: '2020-03-22',
-  endDatetime: '2020-03-24'
-  // count: 100
-});
-
-
-// socket.requestTicks({
-//   symbol: 'SHFE.rb2010',
-//   // startDay: -1,
-//   // dayCount: 1// 3600 * 24 * 1e9
-//   count: 100
+// socket.requestKlines({
+//   symbols: ['SHFE.rb2010'],
+//   duration: '1m',
+//   startDatetime: '2020-03-22',
 // });
+
+
+socket.requestTicks({
+  symbols: 'SHFE.rb2010',
+  startDatetime: '2020-03-22',
+  endDatetime: '2020-03-24',
+  count: 10
+});
 // socket.sendQuotes({
 //   symbol: 'SHFE.ag2006'
 // }); // {"aid":"subscribe_quote","ins_list":"CFFEX.IF2004,CFFEX.IH2004,CFFEX.IC2004,CFFEX.TF2006,CFFEX.T2006,CFFEX.TS2006,SHFE.cu2005,SHFE.au2006,SHFE.ag2006"}

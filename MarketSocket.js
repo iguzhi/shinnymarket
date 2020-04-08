@@ -27,31 +27,18 @@ class MarketSocket extends EventEmitter {
     this.reconnectMaxTimes = options.reconnectMaxTimes || 3;
     this.reconnectTimes = 0;
 
-    this[uniqueId] = 0; // 请求的id，也是请求的key值（在请求序列里根据id找对应的包）
-    this[requestQueue] = {};// 请求序列
-    this[noticeQueue] = {};// server的通知序列
-
     this._init(false);
   }
 
-  send (data, serviceName) {
-    return new Promise((resolve, reject) => {
-      const packet = {
-        id: ++this[uniqueId],
-        packetType: "request",
-        serviceName,
-        data
-      };
+  send (data) {
+    const objToJson = JSON.stringify(data);
 
-      const objToJson = JSON.stringify(data);
-
-      if (this.isReady()) {
-        this.ws.send(objToJson);
-      }
-      else {
-        this.queue.push(objToJson);
-      }
-    });
+    if (this.isReady()) {
+      this.ws.send(objToJson);
+    }
+    else {
+      this.queue.push(objToJson);
+    }
   }
 
   isReady() {
@@ -131,7 +118,7 @@ class MarketSocket extends EventEmitter {
       let list = data.data;
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
-        if (Object.keys(d).length === 1 && d.klines) {
+        if (Object.keys(d).length === 1 && d.klines && _.get(d.klines, [symbol, getDurationValue(duration), 'data'])) {
           for (let symbol in d.klines) {
             let symbolKlineData = d.klines[symbol];
             for (let durationValue in symbolKlineData) {
@@ -152,7 +139,7 @@ class MarketSocket extends EventEmitter {
               }
               let klinesData = klines[duration];
               if (!klinesData) {
-                return null;
+                return;
               }
               klinesData = klinesData.data;
               if (toArray) {
@@ -179,7 +166,7 @@ class MarketSocket extends EventEmitter {
       let list = data.data;
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
-        if (Object.keys(d).length === 1 && d.ticks) {
+        if (Object.keys(d).length === 1 && d.ticks && _.get(d.ticks, [symbol, 'data'])) {
           for (let symbol in d.ticks) {
             let symbolTickData = d.ticks[symbol].data;
             for (let id in symbolTickData) {
@@ -188,7 +175,18 @@ class MarketSocket extends EventEmitter {
             }
           }
 
-          return symbol ? d.ticks[symbol] : d.ticks;
+          if (symbol) {
+            let tickData = d.ticks[symbol];
+            if (toArray) {
+              return Object.values(tickData).sort((a, b) => a.id - b.id);
+            }
+            else {
+              return tickData;
+            }
+          }
+          else {
+            return d.ticks;
+          }
         }
       }
     }
@@ -207,14 +205,10 @@ class MarketSocket extends EventEmitter {
   }
 
   /**
-   * 使用startDay和dayCount两个参数结合查询, 一次最多只能查10天的数据
-   * 使用barCount查询, 一次最多查询10000根K线数据
-   * startDay、dayCount和barCount 二者互斥, 如果都存在, 优先使用startDay、dayCount查询
-   * @param {Integer} startDay 从哪一天开始查, 负数-n表示从当前时间往前查n天K线数据
-   * @param {Integer} dayCount 查多少天的K线数据, 最大值是10, 最小值是1
-   * @param {Integer} barCount 查多少根K线数据
+   * @param {Integer} startDatetime 开始日期
+   * @param {Integer} count 一次查多少根K线数据
    */
-  requestKlines({ symbols = [], duration = '1m', startDatetime, endDatetime }) {
+  requestKlines({ symbols = [], duration = '1m', startDatetime, leftId, count = 1998 }) {
     if (_.isString(symbols)) {
       symbols = symbols.split(',');
     }
@@ -224,19 +218,20 @@ class MarketSocket extends EventEmitter {
       chart_id: 'kline_chart_' + randomStr(),
       ins_list: symbols.join(','),
       duration: getDurationValue(duration),
-      // left_id: 0,
-      // right_id: 0,
-      // more_data: true,
-      // ...params
-      view_width: 20,
+      view_width: count,
       focus_datetime: datetimeToNano(startDatetime),
       focus_position: 0
     };
-    
-    return this.send(params, 'requestKlines');
+
+    if (leftId) {
+      params.left_chart_id = leftId;
+    }
+
+    this.send(params);
+    return params;
   }
 
-  requestTicks({ symbols = [], startDatetime, endDatetime }) {
+  requestTicks({ symbols = [], startDatetime, count = 1998 }) {
     if (_.isString(symbols)) {
       symbols = symbols.split(',');
     }
@@ -250,15 +245,13 @@ class MarketSocket extends EventEmitter {
       chart_id: 'tick_chart_' + randomStr(),
       ins_list: symbols.join(','),
       duration: 0,
-      // left_id: 0,
-      // right_id: 0,
-      // more_data: true,
-      // ...params
-      view_width: 20,
+      view_width: count,
       focus_datetime: datetimeToNano(startDatetime),
       focus_position: 0
     };
-    return this.send(params, 'requestTicks');
+
+    this.send(params);
+    return params;
   }
 
   requestQuotes({ symbols = [] }) {
@@ -266,10 +259,13 @@ class MarketSocket extends EventEmitter {
       symbols = symbols.split(',');
     }
 
-    return this.send({
+    const params = {
       aid: 'subscribe_quote',
       ins_list: symbols.join(',')
-    }, 'requestQuotes');
+    };
+
+    this.send(params);
+    return params;
   }
 
 }
