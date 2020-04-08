@@ -116,13 +116,18 @@ class MarketSocket extends EventEmitter {
   getKlines({ data, symbol, duration, toArray = true }) {
     if (data.aid === 'rtn_data') {
       let list = data.data;
+      let rtnDataList = [];
+      loop1: // 幸亏有此语法啊
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
-        if (Object.keys(d).length === 1 && d.klines && _.get(d.klines, [symbol, getDurationValue(duration), 'data'])) {
+        if (Object.keys(d).length === 1 && d.klines) {
           for (let symbol in d.klines) {
             let symbolKlineData = d.klines[symbol];
             for (let durationValue in symbolKlineData) {
               let durationKlineData = symbolKlineData[durationValue].data;
+              if (!durationKlineData) {
+                continue loop1;
+              }
               for (let id in durationKlineData) {
                 durationKlineData[id].id = Number(id);
                 durationKlineData[id].datetime /= 1e6; // 转换成毫秒
@@ -131,33 +136,43 @@ class MarketSocket extends EventEmitter {
               delete symbolKlineData[durationValue];
             }
           }
+
+          let rtnData;
           if (symbol) {
             let klines = d.klines[symbol];
+            if (!klines) {
+              continue;
+            }
             if (duration) {
               if (typeof duration === Number) {
                 duration = getDurationLabel(duration);
               }
               let klinesData = klines[duration];
               if (!klinesData) {
-                return;
+                continue;
               }
               klinesData = klinesData.data;
+              if (!klinesData) {
+                continue;
+              }
               if (toArray) {
-                return Object.values(klinesData).sort((a, b) => a.id - b.id);
+                rtnData = Object.values(klinesData).sort((a, b) => a.id - b.id);
               }
               else {
-                return klinesData;
+                rtnData = klinesData;
               }
             }
             else {
-              return klines;
+              rtnData = klines;
             }
           }
           else {
-            return d.klines;
+            rtnData = d.klines;
           }
+          rtnDataList.push(rtnData);
         }
       }
+      return rtnDataList;
     }
   }
 
@@ -226,7 +241,7 @@ class MarketSocket extends EventEmitter {
     if (leftId) {
       params.left_chart_id = leftId;
     }
-
+    console.log('params: ', params)
     this.send(params);
     return params;
   }
