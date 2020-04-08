@@ -1,3 +1,5 @@
+const _ = require('lodash');
+
 const DURATION_UNIT = {
   m: 60 * 1e9, // 1分钟
   h: 60 * 60 * 1e9, // 1小时
@@ -39,4 +41,16 @@ exports.randomStr = function (len = 8) {
     s += charts[(Math.random() * 0x3e) | 0];
   }
   return s;
+}
+
+exports.datetimeToNano = function (datetime) {
+  if (_.isString(datetime)) {
+    datetime = new Date(datetime);
+  }
+  else if (_.isPlainObject(datetime)) {
+    const { year, month, day, hour, minute, second } = datetime;
+    datetime = new Date(year, month, day, hour, minute, second);
+  }
+
+  return (_.isDate(datetime) ? datetime.getTime() : datetime) * 1e6;
 }

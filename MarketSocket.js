@@ -1,7 +1,12 @@
 const EventEmitter = require('eventemitter3');
 const WebSocket = require('ws');
-const { getDurationLabel, getDurationValue, randomStr } = require('./util');
+const _ = require('lodash');
+const { getDurationLabel, getDurationValue, randomStr, datetimeToNano } = require('./util');
 const MARKET_URL = 'wss://openmd.shinnytech.com/t/md/front/mobile';
+
+const uniqueId = Symbol("uniqueId");
+const requestQueue = Symbol("requestQueue");
+const noticeQueue = Symbol("noticeQueue");
 
 class MarketSocket extends EventEmitter {
   constructor(url = MARKET_URL, options = {}) {
@@ -22,19 +27,31 @@ class MarketSocket extends EventEmitter {
     this.reconnectMaxTimes = options.reconnectMaxTimes || 3;
     this.reconnectTimes = 0;
 
-    this.data = {};
+    this[uniqueId] = 0; // 请求的id，也是请求的key值（在请求序列里根据id找对应的包）
+    this[requestQueue] = {};// 请求序列
+    this[noticeQueue] = {};// server的通知序列
 
     this._init(false);
   }
 
-  // string or object
-  send(obj) {
-    const objToJson = JSON.stringify(obj)
-    if (this.isReady()) {
-      this.ws.send(objToJson);
-    } else {
-      this.queue.push(objToJson);
-    }
+  send (data, serviceName) {
+    return new Promise((resolve, reject) => {
+      const packet = {
+        id: ++this[uniqueId],
+        packetType: "request",
+        serviceName,
+        data
+      };
+
+      const objToJson = JSON.stringify(data);
+
+      if (this.isReady()) {
+        this.ws.send(objToJson);
+      }
+      else {
+        this.queue.push(objToJson);
+      }
+    });
   }
 
   isReady() {
@@ -197,85 +214,62 @@ class MarketSocket extends EventEmitter {
    * @param {Integer} dayCount 查多少天的K线数据, 最大值是10, 最小值是1
    * @param {Integer} barCount 查多少根K线数据
    */
-  requestKlines({ symbol, duration = '1m', startDay, dayCount, count }) {
-    const params = {};
-    if (typeof startDay !== 'undefined' && typeof dayCount !== 'undefined') {
-      // if (startDay >= 0) {
-      //   console.error('Error: startDay合法值必须为负整数');
-      //   return;
-      // }
-      // if (dayCount > 10 || dayCount < 1) {
-      //   console.error('Error: dayCount合法值必须为[1, 10]的整数');
-      //   return;
-      // }
-      // params.trading_day_start = startDay * 3600 * 24 * 1e9;
-      // params.trading_day_count = dayCount * 3600 * 24 * 1e9;
-      params.trading_day_start = new Date(2020, 1, 1).getTime() * 1e6;
-      params.trading_day_count = 1 * 3600 * 24 * 1e9;
-      // params.trading_day_end = new Date(2020, 3, 28).getTime() * 1e6;
+  requestKlines({ symbols = [], duration = '1m', startDatetime, endDatetime }) {
+    if (_.isString(symbols)) {
+      symbols = symbols.split(',');
     }
-    else if (typeof count !== 'undefined') {
-      if (count > 10000 || count < 1) {
-        console.error('Error: count合法值必须为[1, 10000]的整数');
-        return;
-      }
-      params.view_width = count;
-    }
-    this.send({
+
+    const params = {
       aid: 'set_chart',
       chart_id: 'kline_chart_' + randomStr(),
-      ins_list: 'SHFE.rb2010,SHFE.ru2010,SHFE.cu2010',
+      ins_list: symbols.join(','),
       duration: getDurationValue(duration),
       // left_id: 0,
       // right_id: 0,
       // more_data: true,
       // ...params
       view_width: 20,
-      focus_datetime: params.trading_day_start,
+      focus_datetime: datetimeToNano(startDatetime),
       focus_position: 0
-    });
-    // ins_list: symbols.join(','),
-    //   duration,
-    //   view_width: 2000,
-    //   focus_datetime: startDatetime,
-    //   focus_position: 0,
+    };
+    
+    return this.send(params, 'requestKlines');
   }
 
-  requestTicks({ symbol, startDay, dayCount, count }) {
-    const params = {};
-    if (typeof startDay !== 'undefined' && typeof dayCount !== 'undefined') {
-      if (startDay >= 0) {
-        console.error('Error: startDay合法值必须为负整数');
-        return;
-      }
-      if (dayCount > 10 || dayCount < 1) {
-        console.error('Error: dayCount合法值必须为[1, 10]的整数');
-        return;
-      }
-      params.trading_day_start = startDay * 3600 * 24 * 1e9;
-      params.trading_day_count = dayCount * 3600 * 24 * 1e9;
+  requestTicks({ symbols = [], startDatetime, endDatetime }) {
+    if (_.isString(symbols)) {
+      symbols = symbols.split(',');
     }
-    else if (typeof count !== 'undefined') {
-      if (count > 10000 || count < 1) {
-        console.error('Error: count合法值必须为[1, 10000]的整数');
-        return;
-      }
-      params.view_width = count;
+
+    if (symbols.length > 1) {
+      throw new Error('Tick序列不支持多合约订阅');
     }
-    this.send({
+
+    const params = {
       aid: 'set_chart',
-      chart_id: 'chart_tick',
-      ins_list: symbol,
+      chart_id: 'tick_chart_' + randomStr(),
+      ins_list: symbols.join(','),
       duration: 0,
-      ...params
-    });
+      // left_id: 0,
+      // right_id: 0,
+      // more_data: true,
+      // ...params
+      view_width: 20,
+      focus_datetime: datetimeToNano(startDatetime),
+      focus_position: 0
+    };
+    return this.send(params, 'requestTicks');
   }
 
-  requestQuotes({ symbol }) {
-    this.send({
+  requestQuotes({ symbols = [] }) {
+    if (_.isString(symbols)) {
+      symbols = symbols.split(',');
+    }
+
+    return this.send({
       aid: 'subscribe_quote',
-      ins_list: symbol
-    });
+      ins_list: symbols.join(',')
+    }, 'requestQuotes');
   }
 
 }

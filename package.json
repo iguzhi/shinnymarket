@@ -21,6 +21,7 @@
   "homepage": "https://github.com/iguzhi/shinnymarket#readme",
   "dependencies": {
     "eventemitter3": "^4.0.0",
+    "lodash": "^4.17.15",
     "ws": "^7.2.3"
   }
 }

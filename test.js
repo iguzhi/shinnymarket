@@ -1,7 +1,5 @@
 const { MarketSocket } = require('./index');
 
-const socket = new MarketSocket();
-
 let fs = require('fs');
  
 let options = {
@@ -11,10 +9,12 @@ let options = {
  
 let stdout = fs.createWriteStream('./stdout.log', options);
 let stderr = fs.createWriteStream('./stderr.log', options);
- 
+
 // 创建logger
 let logger = new console.Console(stdout, stderr);
  
+
+const socket = new MarketSocket();
 
 socket.on('message', data => {
   console.log(JSON.stringify(data))
@@ -44,12 +44,13 @@ socket.on('error', data => {
 });
 
 socket.requestKlines({
-  symbol: 'SHFE.rb2010',
+  symbols: ['SHFE.rb2010'],
   duration: '1m',
-  startDay: -1,
-  dayCount: 1// 3600 * 24 * 1e9
+  startDatetime: '2020-03-22',
+  endDatetime: '2020-03-24'
   // count: 100
 });
+
 
 // socket.requestTicks({
 //   symbol: 'SHFE.rb2010',
