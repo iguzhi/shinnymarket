@@ -181,7 +181,7 @@ class MarketSocket extends EventEmitter {
       let list = data.data;
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
-        if (Object.keys(d).length === 1 && d.ticks && _.get(d.ticks, [symbol, 'data'])) {
+        if (Object.keys(d).length === 1 && d.ticks) {
           for (let symbol in d.ticks) {
             let symbolTickData = d.ticks[symbol].data;
             for (let id in symbolTickData) {
@@ -192,6 +192,7 @@ class MarketSocket extends EventEmitter {
 
           if (symbol) {
             let tickData = d.ticks[symbol];
+
             if (toArray) {
               return Object.values(tickData).sort((a, b) => a.id - b.id);
             }
@@ -242,7 +243,7 @@ class MarketSocket extends EventEmitter {
     return params;
   }
 
-  requestTicks({ symbols = [], startDatetime, count = 1998 }) {
+  requestTicks({ symbols = [], startDatetime, count = 1998, chartId }) {
     if (_.isString(symbols)) {
       symbols = symbols.split(',');
     }
@@ -253,7 +254,7 @@ class MarketSocket extends EventEmitter {
 
     const params = {
       aid: 'set_chart',
-      chart_id: 'tick_chart_' + randomStr(),
+      chart_id: chartId || 'tick_chart_' + randomStr(),
       ins_list: symbols.join(','),
       duration: 0,
       view_width: count,
