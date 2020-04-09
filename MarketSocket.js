@@ -224,15 +224,18 @@ class MarketSocket extends EventEmitter {
    * @param {Integer} startDatetime 开始日期
    * @param {Integer} count 一次查多少根K线数据
    */
-  requestKlines({ symbols = [], duration = '1m', startDatetime, count = 1998, chartId }) {
-    if (_.isString(symbols)) {
-      symbols = symbols.split(',');
+  requestKlines({ symbol = '', duration = '1m', startDatetime, count = 1998, chartId }) {
+    let symbols = symbol.split(',');
+
+    if (symbols && symbols.length > 1) {
+      // 实际上快期接口是支持一次订阅多个kline序列的, 但为了处理方便同时和requestTicks接口保持一致, 故这里也只支持单个合约订阅
+      throw new Error('Kline序列不支持多合约订阅');
     }
 
     const params = {
       aid: 'set_chart',
       chart_id: chartId || 'kline_chart_' + randomStr(),
-      ins_list: symbols.join(','),
+      ins_list: symbol,
       duration: getDurationValue(duration),
       view_width: count,
       focus_datetime: datetimeToNano(startDatetime),
@@ -243,19 +246,17 @@ class MarketSocket extends EventEmitter {
     return params;
   }
 
-  requestTicks({ symbols = [], startDatetime, count = 1998, chartId }) {
-    if (_.isString(symbols)) {
-      symbols = symbols.split(',');
-    }
+  requestTicks({ symbol = '', startDatetime, count = 1998, chartId }) {
+    let symbols = symbol.split(',');
 
-    if (symbols.length > 1) {
+    if (symbols && symbols.length > 1) {
       throw new Error('Tick序列不支持多合约订阅');
     }
 
     const params = {
       aid: 'set_chart',
       chart_id: chartId || 'tick_chart_' + randomStr(),
-      ins_list: symbols.join(','),
+      ins_list: symbol,
       duration: 0,
       view_width: count,
       focus_datetime: datetimeToNano(startDatetime),
