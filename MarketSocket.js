@@ -224,11 +224,11 @@ class MarketSocket extends EventEmitter {
    * @param {Integer} startDatetime 开始日期
    * @param {Integer} count 一次查多少根K线数据
    */
-  requestKlines({ symbol = '', duration = '1m', startDatetime, count = 1998, chartId }) {
+  requestKlines({ symbol = '', duration = '1m', startDatetime, count = 1998, chartId, multipleSymbols = false }) {
     let symbols = symbol.split(',');
 
-    if (symbols && symbols.length > 1) {
-      // 实际上快期接口是支持一次订阅多个kline序列的, 但为了处理方便同时和requestTicks接口保持一致, 故这里也只支持单个合约订阅
+    if (!multipleSymbols && symbols && symbols.length > 1) {
+      // 实际上快期接口是支持一次订阅多个kline序列的, 但为了处理方便同时和requestTicks接口保持一致, 故这里默认也只支持单个合约订阅， 可通过multipleSymbols解锁多合约订阅功能
       throw new Error('Kline序列不支持多合约订阅');
     }
 
