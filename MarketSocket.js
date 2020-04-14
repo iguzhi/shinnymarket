@@ -115,8 +115,22 @@ class MarketSocket extends EventEmitter {
 
   getKlines({ data, symbol, duration, toArray = true }) {
     if (data.aid === 'rtn_data') {
-      let list = data.data;
-      let rtnDataList = [];
+      const list = data.data;
+      const rtnDataList = [];
+      const charts = list[list.length - 2].charts;
+      const chart = charts[this.klineChartId];
+
+      if (!chart) {
+        return rtnDataList;
+      }
+
+      const leftId = chart.left_id;
+      const rightId = chart.right_id;
+
+      if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
+        return rtnDataList;
+      }
+
       loop1: // 幸亏有此语法啊
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
@@ -129,7 +143,11 @@ class MarketSocket extends EventEmitter {
                 continue loop1;
               }
               for (let id in durationKlineData) {
-                durationKlineData[id].id = Number(id);
+                id = Number(id);
+                if (id < leftId || id > rightId) {
+                  continue;
+                }
+                durationKlineData[id].id = id;
                 durationKlineData[id].datetime /= 1e6; // 转换成毫秒
               }
               symbolKlineData[getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
@@ -178,14 +196,32 @@ class MarketSocket extends EventEmitter {
 
   getTicks({ data, symbol, toArray = true }) {
     if (data.aid === 'rtn_data') {
-      let list = data.data;
+      const list = data.data;
+      const charts = list[list.length - 2].charts;
+      const chart = charts[this.tickChartId];
+
+      if (!chart) {
+        return [];
+      }
+
+      const leftId = chart.left_id;
+      const rightId = chart.right_id;
+
+      if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
+        return [];
+      }
+
       for (let i = 0, l = list.length; i < l; i++) {
         let d = list[i];
         if (Object.keys(d).length === 1 && d.ticks) {
           for (let symbol in d.ticks) {
             let symbolTickData = d.ticks[symbol].data;
             for (let id in symbolTickData) {
-              symbolTickData[id].id = Number(id);
+              id = Number(id);
+              if (id < leftId || id > rightId) {
+                continue;
+              }
+              symbolTickData[id].id = id;
               symbolTickData[id].datetime /= 1e6; // 转换成毫秒
             }
           }
@@ -242,6 +278,8 @@ class MarketSocket extends EventEmitter {
       focus_position: 0
     };
 
+    this.klineChartId = params.chart_id;
+
     this.send(params);
     return params;
   }
@@ -262,6 +300,8 @@ class MarketSocket extends EventEmitter {
       focus_datetime: datetimeToNano(startDatetime),
       focus_position: 0
     };
+
+    this.tickChartId = params.chart_id;
 
     this.send(params);
     return params;
