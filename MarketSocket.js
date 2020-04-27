@@ -145,6 +145,7 @@ class MarketSocket extends EventEmitter {
               for (let id in durationKlineData) {
                 id = Number(id);
                 if (id < leftId || id > rightId) {
+                  delete durationKlineData[id];
                   continue;
                 }
                 durationKlineData[id].id = id;
@@ -219,6 +220,7 @@ class MarketSocket extends EventEmitter {
             for (let id in symbolTickData) {
               id = Number(id);
               if (id < leftId || id > rightId) {
+                delete symbolTickData[id];
                 continue;
               }
               symbolTickData[id].id = id;
