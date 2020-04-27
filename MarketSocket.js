@@ -118,6 +118,10 @@ class MarketSocket extends EventEmitter {
       const list = data.data;
       const rtnDataList = [];
       const charts = list[list.length - 2].charts;
+      if (!charts) {
+        return rtnDataList;
+      }
+
       const chart = charts[this.klineChartId];
 
       if (!chart) {
@@ -199,6 +203,11 @@ class MarketSocket extends EventEmitter {
     if (data.aid === 'rtn_data') {
       const list = data.data;
       const charts = list[list.length - 2].charts;
+
+      if (!charts) {
+        return [];
+      }
+
       const chart = charts[this.tickChartId];
 
       if (!chart) {
