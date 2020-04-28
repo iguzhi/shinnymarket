@@ -118,71 +118,93 @@ class MarketSocket extends EventEmitter {
       const list = data.data;
       const rtnDataList = [];
       const charts = list[list.length - 2].charts;
+      let outerKlineList = []; // 落在leftId和rightId外的K线
+
+      if (!charts) {
+        return {
+          barsList: rtnDataList,
+          chart,
+          charts,
+          outerKlineList
+        };;
+      }
+
       const chart = charts[this.klineChartId];
 
       if (!chart) {
-        return rtnDataList;
+        return {
+          barsList: rtnDataList,
+          chart,
+          charts,
+          outerKlineList
+        };;
       }
 
       const leftId = chart.left_id;
       const rightId = chart.right_id;
 
       if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
-        return rtnDataList;
+        return {
+          barsList: rtnDataList,
+          chart,
+          charts,
+          outerKlineList
+        };;
       }
 
-      loop1: // 幸亏有此语法啊
-      for (let i = 0, l = list.length; i < l; i++) {
-        let d = list[i];
+      // loop1: // 幸亏有此语法啊
+      // for (let i = 0, l = list.length; i < l; i++) {
+        let d = list[0];
         if (Object.keys(d).length === 1 && d.klines) {
           for (let symbol in d.klines) {
             let symbolKlineData = d.klines[symbol];
             for (let durationValue in symbolKlineData) {
               let durationKlineData = symbolKlineData[durationValue].data;
-              if (!durationKlineData) {
-                continue loop1;
-              }
-              for (let id in durationKlineData) {
-                id = Number(id);
-                if (id < leftId || id > rightId) {
-                  delete durationKlineData[id];
-                  continue;
+              if (durationKlineData) {
+                for (let id in durationKlineData) {
+                  id = Number(id);
+                  const kline = durationKlineData[id];
+                  kline.id = id;
+                  kline.datetime /= 1e6; // 转换成毫秒
+  
+                  if (id < leftId || id > rightId) {
+                    kline.leftId = leftId;
+                    kline.rightId = rightId;
+                    outerKlineList.push(kline)
+                    delete durationKlineData[id];
+                    continue;
+                  }
                 }
-                durationKlineData[id].id = id;
-                durationKlineData[id].datetime /= 1e6; // 转换成毫秒
+                symbolKlineData[getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
+                delete symbolKlineData[durationValue];
               }
-              symbolKlineData[getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
-              delete symbolKlineData[durationValue];
             }
           }
 
           let rtnData;
           if (symbol) {
             let klines = d.klines[symbol];
-            if (!klines) {
-              continue;
-            }
-            if (duration) {
-              if (typeof duration === Number) {
-                duration = getDurationLabel(duration);
-              }
-              let klinesData = klines[duration];
-              if (!klinesData) {
-                continue;
-              }
-              klinesData = klinesData.data;
-              if (!klinesData) {
-                continue;
-              }
-              if (toArray) {
-                rtnData = Object.values(klinesData).sort((a, b) => a.id - b.id);
+            if (klines) {
+              if (duration) {
+                if (typeof duration === Number) {
+                  duration = getDurationLabel(duration);
+                }
+                let klinesData = klines[duration];
+                if (klinesData) {
+                  klinesData = klinesData.data;
+                  if (!klinesData) {
+                    if (toArray) {
+                      rtnData = Object.values(klinesData).sort((a, b) => a.id - b.id);
+                    }
+                    else {
+                      rtnData = klinesData;
+                    }
+                  }
+                }
               }
               else {
-                rtnData = klinesData;
+                rtnData = klines;
               }
-            }
-            else {
-              rtnData = klines;
             }
           }
           else {
@@ -190,8 +212,13 @@ class MarketSocket extends EventEmitter {
           }
           rtnDataList.push(rtnData);
         }
-      }
-      return rtnDataList;
+      // }
+      return {
+        barsList: rtnDataList,
+        chart,
+        charts,
+        outerKlineList
+      };
     }
   }
 
@@ -199,6 +226,11 @@ class MarketSocket extends EventEmitter {
     if (data.aid === 'rtn_data') {
       const list = data.data;
       const charts = list[list.length - 2].charts;
+
+      if (!charts) {
+        return [];
+      }
+
       const chart = charts[this.tickChartId];
 
       if (!chart) {
@@ -212,8 +244,8 @@ class MarketSocket extends EventEmitter {
         return [];
       }
 
-      for (let i = 0, l = list.length; i < l; i++) {
-        let d = list[i];
+      // for (let i = 0, l = list.length; i < l; i++) {
+        let d = list[0];
         if (Object.keys(d).length === 1 && d.ticks) {
           for (let symbol in d.ticks) {
             let symbolTickData = d.ticks[symbol].data;
@@ -242,7 +274,7 @@ class MarketSocket extends EventEmitter {
             return d.ticks;
           }
         }
-      }
+      // }
     }
   }
 
