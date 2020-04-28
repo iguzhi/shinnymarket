@@ -118,14 +118,12 @@ class MarketSocket extends EventEmitter {
       const list = data.data;
       const rtnDataList = [];
       const charts = list[list.length - 2].charts;
-      let outerKlineList = []; // 落在leftId和rightId外的K线
+      let outBars = []; // 落在leftId和rightId外的K线
 
       if (!charts) {
         return {
           barsList: rtnDataList,
-          chart,
-          charts,
-          outerKlineList
+          outBars
         };;
       }
 
@@ -134,9 +132,7 @@ class MarketSocket extends EventEmitter {
       if (!chart) {
         return {
           barsList: rtnDataList,
-          chart,
-          charts,
-          outerKlineList
+          outBars
         };;
       }
 
@@ -146,9 +142,7 @@ class MarketSocket extends EventEmitter {
       if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
         return {
           barsList: rtnDataList,
-          chart,
-          charts,
-          outerKlineList
+          outBars
         };;
       }
 
@@ -170,7 +164,7 @@ class MarketSocket extends EventEmitter {
                   if (id < leftId || id > rightId) {
                     kline.leftId = leftId;
                     kline.rightId = rightId;
-                    outerKlineList.push(kline)
+                    outBars.push(kline)
                     delete durationKlineData[id];
                     continue;
                   }
@@ -215,9 +209,7 @@ class MarketSocket extends EventEmitter {
       // }
       return {
         barsList: rtnDataList,
-        chart,
-        charts,
-        outerKlineList
+        outBars
       };
     }
   }
