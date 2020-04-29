@@ -112,24 +112,34 @@ class MarketSocket extends EventEmitter {
   getKlines({ data, symbol, duration, toArray = true }) {
     if (data.aid === 'rtn_data') {
       const list = data.data;
-      const rtnDataList = [];
-      const charts = list[list.length - 2].charts;
-      const outBars = []; // 落在leftId和rightId外的K线
+      let len = list.length;
+      let bars = {};
+      let endBars = {}; // 落在leftId和rightId外的K线
+      let charts;
+
+      for (let i = 0; i < len; i++) {
+        const tempCharts = list[i] && list[i].charts;
+        if (tempCharts) {
+          charts = tempCharts;
+          len = i;
+          break;
+        }
+      }
 
       if (!charts) {
         return {
-          barsList: rtnDataList,
-          outBars
-        };;
+          bars,
+          endBars
+        };
       }
 
       const chart = charts[this.klineChartId];
 
       if (!chart) {
         return {
-          barsList: rtnDataList,
-          outBars
-        };;
+          bars,
+          endBars
+        };
       }
 
       const leftId = chart.left_id;
@@ -137,72 +147,80 @@ class MarketSocket extends EventEmitter {
 
       if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
         return {
-          barsList: rtnDataList,
-          outBars
-        };;
+          bars,
+          endBars
+        };
       }
 
-      let d = list[0];
-      if (Object.keys(d).length === 1 && d.klines) {
-        for (let symbol in d.klines) {
-          let symbolKlineData = d.klines[symbol];
-          for (let durationValue in symbolKlineData) {
-            let durationKlineData = symbolKlineData[durationValue].data;
-            if (durationKlineData) {
-              for (let id in durationKlineData) {
-                id = Number(id);
-                const kline = durationKlineData[id];
-                kline.id = id;
-                kline.datetime /= 1e6; // 转换成毫秒
-
-                if (id < leftId || id > rightId) {
-                  kline.leftId = leftId;
-                  kline.rightId = rightId;
-                  outBars.push(kline)
-                  delete durationKlineData[id];
-                  continue;
-                }
-              }
-              symbolKlineData[getDurationLabel(Number(durationValue))] = symbolKlineData[durationValue];
-              delete symbolKlineData[durationValue];
+      for (let i = 0; i < len; i++) {
+        const d = list[i];
+        if (Object.keys(d).length === 1 && d.klines) {
+          for (const symbol in d.klines) {
+            if (!bars[symbol]) {
+              bars[symbol] = {};
             }
-          }
-        }
-
-        let rtnData;
-        if (symbol) {
-          let klines = d.klines[symbol];
-          if (klines) {
-            if (duration) {
-              if (typeof duration === Number) {
-                duration = getDurationLabel(duration);
-              }
-              let klinesData = klines[duration];
-              if (klinesData) {
-                klinesData = klinesData.data;
-                if (!klinesData) {
-                  if (toArray) {
-                    rtnData = Object.values(klinesData).sort((a, b) => a.id - b.id);
+            if (!endBars[symbol]) {
+              endBars[symbol] = {};
+            }
+            const barMap = bars[symbol];
+            const endBarMap = endBars[symbol];
+            const symbolKlineData = d.klines[symbol];
+            for (const durationValue in symbolKlineData) {
+              const durationKlineData = symbolKlineData[durationValue].data;
+              const durationLabel = getDurationLabel(Number(durationValue));
+              if (durationKlineData) {
+                for (let id in durationKlineData) {
+                  id = Number(id);
+                  const bar = durationKlineData[id];
+                  bar.symbol = symbol;
+                  bar.duration = durationLabel;
+                  bar.id = id;
+                  bar.datetime /= 1e6; // 转换成毫秒
+                  if (id < leftId || id > rightId) {
+                    bar.leftId = leftId;
+                    bar.rightId = rightId;
+                    if (id > rightId) {
+                      endBarMap[id] = bar;
+                    }
+                    continue;
                   }
-                  else {
-                    rtnData = klinesData;
-                  }
+                  barMap[id] = bar;
                 }
               }
             }
-            else {
-              rtnData = klines;
-            }
           }
         }
-        else {
-          rtnData = d.klines;
-        }
-        rtnDataList.push(rtnData);
       }
+
+      for (const symbol in bars) {
+        bars[symbol] = Object.values(bars[symbol]).sort((a, b) => a.id - b.id);
+      }
+
+
+      for (const symbol in endBars) {
+        endBars[symbol] = Object.values(endBars[symbol]).sort((a, b) => a.id - b.id);;
+      }
+      
+      
+      if (symbol) {
+        bars = bars[symbol];
+        endBars = endBars[symbol];
+
+        if (bars && bars.length) {
+          if (duration) {
+            if (typeof duration === 'number') {
+              duration = getDurationLabel(duration);
+            }
+
+            bars = bars.filter(item => item.duration === duration);
+            endBars = endBars.filter(item => item.duration === duration);
+          }
+        }
+      }
+
       return {
-        barsList: rtnDataList,
-        outBars
+        bars,
+        endBars
       };
     }
   }
@@ -210,12 +228,25 @@ class MarketSocket extends EventEmitter {
   getTicks({ data, symbol, toArray = true }) {
     if (data.aid === 'rtn_data') {
       const list = data.data;
-      const charts = list[list.length - 2].charts;
-      const outTicks = []; // 落在leftId和rightId外的tick
+      let len = list.length;
+      const ticks = {};
+      const endTicks = {}; // 落在leftId和rightId外的tick
+
+      let charts;
+
+      for (let i = 0; i < len; i++) {
+        const tempCharts = list[i] && list[i].charts;
+        if (tempCharts) {
+          charts = tempCharts;
+          len = i;
+          break;
+        }
+      }
+
       if (!charts) {
         return {
-          ticks: [],
-          outTicks
+          ticks,
+          endTicks
         };
       }
 
@@ -223,8 +254,8 @@ class MarketSocket extends EventEmitter {
 
       if (!chart) {
         return {
-          ticks: [],
-          outTicks
+          ticks,
+          endTicks
         };
       }
 
@@ -233,53 +264,61 @@ class MarketSocket extends EventEmitter {
 
       if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
         return {
-          ticks: [],
-          outTicks
+          ticks,
+          endTicks
         };
       }
-
-      let d = list[0];
-      if (Object.keys(d).length === 1 && d.ticks) {
-        for (let symbol in d.ticks) {
-          let symbolTickData = d.ticks[symbol].data;
-          for (let id in symbolTickData) {
-            id = Number(id);
-            const tick = symbolTickData[id];
-            tick.id = id;
-            tick.datetime /= 1e6; // 转换成毫秒
-            if (id < leftId || id > rightId) {
-              tick.leftId = leftId;
-              tick.rightId = rightId;
-              outTicks.push(tick);
-              delete symbolTickData[id];
-              continue;
+      
+      for (let i = 0; i < len; i++) {
+        const d = list[i];
+        if (Object.keys(d).length === 1 && d.ticks) {
+          for (const symbol in d.ticks) {
+            if (!ticks[symbol]) {
+              ticks[symbol] = {};
+            }
+            if (!endTicks[symbol]) {
+              endTicks[symbol] = {};
+            }
+            const tickMap = ticks[symbol];
+            const endTickMap = endTicks[symbol];
+            const symbolTickData = d.ticks[symbol].data;
+            for (let id in symbolTickData) {
+              id = Number(id);
+              const tick = symbolTickData[id];
+              tick.symbol = symbol;
+              tick.id = id;
+              tick.datetime /= 1e6; // 转换成毫秒
+              if (id < leftId || id > rightId) {
+                tick.leftId = leftId;
+                tick.rightId = rightId;
+                if (id > rightId) {
+                  endTickMap[id] = tick;
+                }
+                continue;
+              }
+              tickMap[id] = tick;
             }
           }
         }
-
-        if (symbol) {
-          let tickData = d.ticks[symbol];
-
-          if (toArray) {
-            return {
-              ticks: Object.values(tickData).sort((a, b) => a.id - b.id),
-              outTicks
-            };
-          }
-          else {
-            return {
-              ticks: tickData,
-              outTicks
-            };
-          }
-        }
-        else {
-          return {
-            ticks: d.ticks,
-            outTicks
-          };
-        }
       }
+      
+      for (const symbol in ticks) {
+        ticks[symbol] = Object.values(ticks[symbol]).sort((a, b) => a.id - b.id);
+      }
+
+      for (const symbol in endTicks) {
+        endTicks[symbol] = Object.values(endTicks[symbol]).sort((a, b) => a.id - b.id);;
+      }
+
+      if (symbol) {
+        ticks = ticks[symbol];
+        endTicks = endTicks[symbol];
+      }
+
+      return {
+        ticks,
+        endTicks
+      };
     }
   }
 
