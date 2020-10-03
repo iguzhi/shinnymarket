@@ -15,11 +15,34 @@ let stdout = fs.createWriteStream('./stdout.log', options);
  let logger = new console.Console(stdout);
 
 const socket = new MarketSocket();
-
+let startTime = Date.now();
+let symbol = 'CFFEX.T2012', duration = '1m'
+let endId, finalBars = [];
 socket.on('message', data => {
-  console.log(JSON.stringify(data));
+  if (!data || data.aid !== 'rtn_data' || !data.data) {
+    return;
+  }
+
+
+  // const clonedData = _.cloneDeep(data)
+
+  let { bars, rightId, hasMoreData }  = socket.getKlines({ data, symbol, duration, endId });
+  if (rightId) {
+    endId = rightId;
+  }
+  console.log('bars.length', bars && bars.length, 'rightId', rightId, 'hasMoreData', hasMoreData)
+  if (bars && bars.length) {
+    finalBars = finalBars.concat(bars);
+    if (!hasMoreData) {
+      finalBars = finalBars.sort((a, b) => a.id - b.id)
+      console.log('finalBars', finalBars.length)
+    }
+  }
 
   logger.log(JSON.stringify(data));
+  console.log('time', Date.now() - startTime)
+
+  // logger.log(JSON.stringify(data));
   // console.log('##aaa: ' + JSON.stringify(
   //   socket.getKlines({ data, symbol: 'SHFE.rb2010', duration: '1m' })
   // ))
@@ -44,9 +67,9 @@ socket.on('error', data => {
 });
 
 socket.requestKlines({
-  symbol: 'CZCE.FG101',
-  duration: '1m',
-  startDatetime: '2020-09-22',
+  symbol,
+  duration,
+  // startDatetime: '2020-09-22',
 });
 
 

@@ -109,12 +109,11 @@ class MarketSocket extends EventEmitter {
     this.ws.close();
   }
 
-  getKlines({ data, symbol, duration, toArray = true }) {
+  getKlines({ data, symbol, duration, endId }) {
     if (data.aid === 'rtn_data') {
       const list = data.data;
       let len = list.length;
       let bars = {};
-      let endBars = {}; // 落在leftId和rightId外的K线
       let charts;
 
       for (let i = 0; i < len; i++) {
@@ -126,30 +125,15 @@ class MarketSocket extends EventEmitter {
         }
       }
 
-      if (!charts) {
-        return {
-          bars,
-          endBars
-        };
-      }
+      let leftId, rightId, hasMoreData = true;
 
-      const chart = charts[this.klineChartId];
-
-      if (!chart) {
-        return {
-          bars,
-          endBars
-        };
-      }
-
-      const leftId = chart.left_id;
-      const rightId = chart.right_id;
-
-      if (!_.isNumber(leftId) || !_.isNumber(rightId)) {
-        return {
-          bars,
-          endBars
-        };
+      if (charts) {
+        const chart = charts[this.klineChartId];
+        if (chart) {
+          leftId = chart.left_id;
+          rightId = chart.right_id;
+          hasMoreData = chart.more_data;
+        }
       }
 
       for (let i = 0; i < len; i++) {
@@ -159,11 +143,8 @@ class MarketSocket extends EventEmitter {
             if (!bars[symbol]) {
               bars[symbol] = {};
             }
-            if (!endBars[symbol]) {
-              endBars[symbol] = {};
-            }
+
             const barMap = bars[symbol];
-            const endBarMap = endBars[symbol];
             const symbolKlineData = d.klines[symbol];
             for (const durationValue in symbolKlineData) {
               const durationKlineData = symbolKlineData[durationValue].data;
@@ -171,19 +152,14 @@ class MarketSocket extends EventEmitter {
               if (durationKlineData) {
                 for (let id in durationKlineData) {
                   id = Number(id);
+                  if (endId && id === endId) {
+                    continue;
+                  }
                   const bar = durationKlineData[id];
                   bar.symbol = symbol;
                   bar.duration = durationLabel;
                   bar.id = id;
                   bar.datetime /= 1e6; // 转换成毫秒
-                  if (id < leftId || id > rightId) {
-                    bar.leftId = leftId;
-                    bar.rightId = rightId;
-                    if (id > rightId) {
-                      endBarMap[id] = bar;
-                    }
-                    continue;
-                  }
                   barMap[id] = bar;
                 }
               }
@@ -193,18 +169,11 @@ class MarketSocket extends EventEmitter {
       }
 
       for (const symbol in bars) {
-        bars[symbol] = Object.values(bars[symbol]).sort((a, b) => a.id - b.id);
+        bars[symbol] = Object.values(bars[symbol]);
       }
-
-
-      for (const symbol in endBars) {
-        endBars[symbol] = Object.values(endBars[symbol]).sort((a, b) => a.id - b.id);;
-      }
-
 
       if (symbol) {
         bars = bars[symbol];
-        endBars = endBars[symbol];
 
         if (bars && bars.length) {
           if (duration) {
@@ -213,14 +182,14 @@ class MarketSocket extends EventEmitter {
             }
 
             bars = bars.filter(item => item.duration === duration);
-            endBars = endBars.filter(item => item.duration === duration);
           }
         }
       }
 
       return {
         bars,
-        endBars
+        rightId,
+        hasMoreData
       };
     }
   }
@@ -335,29 +304,31 @@ class MarketSocket extends EventEmitter {
   }
 
   /**
-   * @param {Integer} startDatetime 开始日期
-   * @param {Integer} count 一次查多少根K线数据
+   * @param {String} symbol 合约 SHFE.rb2101
+   * @param {String} duration 周期 '1m', '5m', '15m', '30m'
    */
-  requestKlines({ symbol = '', duration = '1m', startDatetime, count = 1998, chartId, multipleSymbols = false }) {
+  requestKlines({ symbol = '', duration = '1m' }) {
     let symbols = symbol.split(',');
 
-    if (!multipleSymbols && symbols && symbols.length > 1) {
+    if (symbols && symbols.length > 1) {
       // 实际上快期接口是支持一次订阅多个kline序列的, 但为了处理方便同时和requestTicks接口保持一致, 故这里默认也只支持单个合约订阅， 可通过multipleSymbols解锁多合约订阅功能
       throw new Error('Kline序列不支持多合约订阅');
     }
 
     const params = {
       aid: 'set_chart',
-      chart_id: chartId || 'kline_chart_' + randomStr(),
+      chart_id: 'kline_chart_' + randomStr(),
       ins_list: symbol,
       duration: getDurationValue(duration),
       view_width: 10000,
+      // trading_day_start_id: 51540,
+      // trading_day_count: 1
+      // left_kline_id: 51685
       // focus_datetime: datetimeToNano(startDatetime),
       // focus_position: 0
     };
 
     this.klineChartId = params.chart_id;
-
     this.send(params);
     return params;
   }
