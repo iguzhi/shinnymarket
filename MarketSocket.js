@@ -200,8 +200,8 @@ class MarketSocket extends EventEmitter {
       for (const symbol in endBars) {
         endBars[symbol] = Object.values(endBars[symbol]).sort((a, b) => a.id - b.id);;
       }
-      
-      
+
+
       if (symbol) {
         bars = bars[symbol];
         endBars = endBars[symbol];
@@ -268,7 +268,7 @@ class MarketSocket extends EventEmitter {
           endTicks
         };
       }
-      
+
       for (let i = 0; i < len; i++) {
         const d = list[i];
         if (Object.keys(d).length === 1 && d.ticks) {
@@ -301,7 +301,7 @@ class MarketSocket extends EventEmitter {
           }
         }
       }
-      
+
       for (const symbol in ticks) {
         ticks[symbol] = Object.values(ticks[symbol]).sort((a, b) => a.id - b.id);
       }
@@ -351,9 +351,9 @@ class MarketSocket extends EventEmitter {
       chart_id: chartId || 'kline_chart_' + randomStr(),
       ins_list: symbol,
       duration: getDurationValue(duration),
-      view_width: count,
-      focus_datetime: datetimeToNano(startDatetime),
-      focus_position: 0
+      view_width: 10000,
+      // focus_datetime: datetimeToNano(startDatetime),
+      // focus_position: 0
     };
 
     this.klineChartId = params.chart_id;

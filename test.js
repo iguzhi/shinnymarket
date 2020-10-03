@@ -43,19 +43,19 @@ socket.on('error', data => {
   console.log(data);
 });
 
-// socket.requestKlines({
-//   symbols: ['SHFE.rb2010'],
-//   duration: '1m',
-//   startDatetime: '2020-03-22',
-// });
-
-
-socket.requestTicks({
-  symbols: 'SHFE.rb2010',
-  startDatetime: '2020-03-22',
-  endDatetime: '2020-03-24',
-  count: 10
+socket.requestKlines({
+  symbol: 'CZCE.FG101',
+  duration: '1m',
+  startDatetime: '2020-09-22',
 });
+
+
+// socket.requestTicks({
+//   symbols: 'SHFE.rb2010',
+//   startDatetime: '2020-03-22',
+//   endDatetime: '2020-03-24',
+//   count: 10
+// });
 // socket.sendQuotes({
 //   symbol: 'SHFE.ag2006'
 // }); // {"aid":"subscribe_quote","ins_list":"CFFEX.IF2004,CFFEX.IH2004,CFFEX.IC2004,CFFEX.TF2006,CFFEX.T2006,CFFEX.TS2006,SHFE.cu2005,SHFE.au2006,SHFE.ag2006"}
