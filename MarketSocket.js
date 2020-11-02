@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const _ = require('lodash');
 const { getDurationLabel, getDurationValue, randomStr, datetimeToNano } = require('./util');
 const MARKET_URL = 'wss://openmd.shinnytech.com/t/md/front/mobile';
+// const MARKET_URL = 'wss://api.shinnytech.com/t/nfmd/front/mobile'; // 行情备选wss地址
 
 class MarketSocket extends EventEmitter {
   constructor(url = MARKET_URL, options = {}) {
